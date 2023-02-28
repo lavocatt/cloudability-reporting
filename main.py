@@ -7,7 +7,7 @@ import subprocess
 import os
 from typing import List
 from s3 import add_s3_necesseary_args, upload_file
-from cloudability import CloudabilityReport, Request
+from cloudability import CloudabilityReport, Request, Filter, FilterOperator
 
 
 def get_cloudability_token(args: argparse.Namespace) -> str:
@@ -62,18 +62,19 @@ def pr_costs(cloudability: CloudabilityReport, days=7) -> pd.DataFrame:
     def name_from_label(a: str) -> str:
         return cloudability.measures.name_from_label(a)
 
-    def make_filter(k: str, o: str, v: str) -> str:
-        return Request.make_filter(k, o, v)
-
     # get the total cost report
     total_cost = pd.DataFrame(
         cloudability.run_request(
             Request(
                 filters=[
-                    make_filter(
-                        name_from_label("Account ID"), "==", "933752197999"),
-                    make_filter(
-                        name_from_label("Workload (value)"), "==", "ci runner")
+                    Filter(
+                        name_from_label("Account ID"),
+                        FilterOperator.EQUALS,
+                        "933752197999"),
+                    Filter(
+                        name_from_label("Workload (value)"),
+                        FilterOperator.EQUALS,
+                        "ci runner")
                 ],
                 dimensions=[
                     name_from_label("Project (value)"),
@@ -99,12 +100,18 @@ def pr_costs(cloudability: CloudabilityReport, days=7) -> pd.DataFrame:
         cloudability.run_request(
             Request(
                 filters=[
-                    make_filter(
-                        name_from_label("Account ID"), "==", "933752197999"),
-                    make_filter(
-                        name_from_label("Usage Hours"), ">=", "4"),
-                    make_filter(
-                        name_from_label("Workload (value)"), "==", "ci runner")
+                    Filter(
+                        name_from_label("Account ID"),
+                        FilterOperator.EQUALS,
+                        "933752197999"),
+                    Filter(
+                        name_from_label("Usage Hours"),
+                        FilterOperator.GREATER_THAN_OR_EQUALS,
+                        "4"),
+                    Filter(
+                        name_from_label("Workload (value)"),
+                        FilterOperator.EQUALS,
+                        "ci runner")
                 ],
                 dimensions=[
                     name_from_label("Project (value)"),

@@ -2,6 +2,7 @@ from datetime import datetime as dt, timedelta as td
 from typing import Any, Dict, List, Optional
 from urllib import parse
 import requests
+from enum import Enum
 
 CLOUDABILITY_API = "api.cloudability.com"
 
@@ -32,6 +33,33 @@ class Measures:
         raise RuntimeError(f"Name {name} not found in measures.json")
 
 
+class FilterOperator(Enum):
+    # see https://help.apptio.com/en-us/cloudability/api/v3/cost_reporting_endpoints.htm
+    DOES_NOT_CONTAIN = "!=@"
+    NOT_EQUALS = "!="
+    LESS_THAN_OR_EQUALS = "<="
+    LESS_THAN = "<"
+    CONTAINS = "=@"
+    NOT_IN = "[]!="
+    IN = "[]="
+    EQUALS = "=="
+    GREATER_THAN = ">"
+    STRICTLY_EQUALS = "==="
+    STRICTLY_NOT_EQUALS = "!=="
+    GREATER_THAN_OR_EQUALS = ">="
+
+
+class Filter:
+
+    def __init__(self, key: str, operator: FilterOperator, value: str):
+        self.key: str = key
+        self.operator: str = operator.value
+        self.value: str = value
+
+    def __repr__(self) -> str:
+        return parse.quote(f"{self.key}{self.operator}{self.value}")
+
+
 class Request:
     filters: List[str]
     dimensions: List[str]
@@ -40,12 +68,12 @@ class Request:
     days: int = 7
 
     def __init__(self,
-                 filters: Optional[List[str]] = None, dimensions:
+                 filters: Optional[List[Filter]] = None, dimensions:
                  Optional[List[str]] = None, metrics: Optional[List[str]] =
                  None, mappings: Optional[Dict[str, str]] = None,
                  days=7) -> None:
         if filters:
-            self.filters = filters
+            self.filters = [str(x) for x in filters]
         if dimensions:
             self.dimensions = dimensions
         if metrics:
@@ -100,32 +128,6 @@ class Request:
                 mapped_ret[self.name_mapping[k]] = v
             return mapped_ret
         return ret
-
-    @staticmethod
-    def make_filter(key: str, operator: str, value: str) -> str:
-        """
-        Creates a cloudability v3 valid filter. Checks that the filter is supported
-        by the API and then convert the string using escape chars for each special
-        ones.
-        """
-        # see https://help.apptio.com/en-us/cloudability/api/v3/cost_reporting_endpoints.htm
-        filter_operators = [
-            "!=@",  # does not contain
-            "!=",   # not equals
-            "<=",   # less than or equals
-            "<",    # less than
-            "=@",   # contains
-            "[]!=",  # not in*
-            "[]=",  # in*
-            "==",   # equals
-            ">",    # greater than
-            "===",  # strictly equals*
-            "!==",  # strictly not equals*
-            ">="    # greater than or equals
-        ]
-        if operator not in filter_operators:
-            raise RuntimeError("Unsupported operator")
-        return parse.quote(f"{key}{operator}{value}")
 
     @staticmethod
     def convert(tp: str, value: Any):
